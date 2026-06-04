@@ -1,5 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { Client as NotionClient } from '@notionhq/client';
+import crypto from 'crypto';
+import { sendSMSConfirmation, createCalendarEvent } from '../services/integrations';
 import Anthropic from '@anthropic-ai/sdk';
 import { config } from '../config';
 
@@ -207,6 +209,18 @@ function normalizeTranscript(raw: any): string {
 // ── Main Retell webhook handler ────────────────────────────────────────────────
 router.post('/retell', async (req: Request, res: Response) => {
   try {
+    // Verify Retell webhook signature (security)
+    const signature = req.headers['x-retell-signature'] as string;
+    if (config.retellSigningKey && signature) {
+      const hmac = crypto.createHmac('sha256', config.retellSigningKey);
+      hmac.update(JSON.stringify(req.body));
+      const expected = hmac.digest('hex');
+      if (signature !== expected) {
+        console.warn('[Webhook] ⚠️ Invalid signature — request rejected');
+        return res.status(401).json({ error: 'Invalid signature' });
+      }
+    }
+
     const { event, call } = req.body;
     if (!call) return res.status(400).json({ error: 'Missing call data' });
 
@@ -278,6 +292,7 @@ router.post('/retell', async (req: Request, res: Response) => {
 });
 
 export default router;
+
 
 
 

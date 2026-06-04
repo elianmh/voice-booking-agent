@@ -7,6 +7,8 @@ import { config } from '../config';
 const NOTION_DB = config.notionDatabaseId || '99284b018092445a846ad79cee79b725';
 // Prefetch cache: callId -> caller info (fetched while user speaks)
 const callerCache = new Map<string, string | null>();
+// Auto-cleanup caller cache every 30 min to prevent memory leaks
+setInterval(() => { callerCache.clear(); }, 30 * 60 * 1000);
 
 import { buildSystemPrompt } from './promptBuilder';
 
@@ -176,6 +178,7 @@ export function startCustomLLMServer(port = 8081) {
   s.listen(port);
   return s;
 }
+
 
 
 
